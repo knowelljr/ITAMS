@@ -1,0 +1,20 @@
+CREATE TABLE assets (
+    id INT PRIMARY KEY IDENTITY(1,1),
+    code NVARCHAR(50) UNIQUE NOT NULL,
+    name NVARCHAR(100) NOT NULL,
+    category NVARCHAR(50),
+    description NVARCHAR(255),
+    serial_number NVARCHAR(100),
+    model NVARCHAR(100),
+    location NVARCHAR(100),
+    cost DECIMAL(10, 2),
+    quantity_onhand INT DEFAULT 0,
+    quantity_issued INT DEFAULT 0,
+    quantity_decommissioned INT DEFAULT 0,
+    optimum_stock INT DEFAULT 10,
+    max_stock INT DEFAULT 50,
+    min_stock INT DEFAULT 5,
+    status NVARCHAR(50) DEFAULT 'ACTIVE',
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE()
+);
