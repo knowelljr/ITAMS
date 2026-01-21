@@ -4,66 +4,52 @@ namespace App\Controllers;
 
 use App\Models\Asset;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Response;
 
 class AssetController
 {
-    // Display a listing of the assets.
-    public function index()
-    {
-        $assets = Asset::all();
-        return response()->json($assets);
-    }
-
-    // Show the form for creating a new asset.
-    public function create()
-    {
-        // Return create view (if using a view)
-    }
-
-    // Store a newly created asset in storage.
-    public function store(Request $request)
+    // Create a new asset
+    public function create(Request $request)
     {
         $asset = Asset::create($request->all());
-        return response()->json($asset, 201);
+        return Response::json($asset, 201);
     }
 
-    // Display the specified asset.
+    // Read assets with optional filtering
+    public function index(Request $request)
+    {
+        $query = Asset::query();
+        if ($request->has('category')) {
+            $query->where('category', $request->get('category'));
+        }
+        if ($request->has('status')) {
+            $query->where('status', $request->get('status'));
+        }
+        $assets = $query->get();
+        return Response::json($assets);
+    }
+
+    // Show asset details
     public function show($id)
     {
         $asset = Asset::findOrFail($id);
-        return response()->json($asset);
+        return Response::json($asset);
     }
 
-    // Show the form for editing the specified asset.
-    public function edit($id)
-    {
-        // Return edit view (if using a view)
-    }
-
-    // Update the specified asset in storage.
+    // Update an existing asset
     public function update(Request $request, $id)
     {
         $asset = Asset::findOrFail($id);
         $asset->update($request->all());
-        return response()->json($asset);
+        return Response::json($asset);
     }
 
-    // Remove the specified asset from storage.
-    public function destroy($id)
+    // Decommission an asset
+    public function decommission($id)
     {
         $asset = Asset::findOrFail($id);
-        $asset->delete();
-        return response()->json(null, 204);
-    }
-
-    // Stock management method.
-    public function manageStock($id, Request $request)
-    {
-        $asset = Asset::findOrFail($id);
-        // Assuming there's a 'quantity' field in the request
-        $asset->quantity += $request->input('quantity');
+        $asset->status = 'decommissioned';
         $asset->save();
-        return response()->json($asset);
+        return Response::json($asset);
     }
 }
