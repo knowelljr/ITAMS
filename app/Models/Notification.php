@@ -2,44 +2,44 @@
 
 namespace App\Models;
 
-class Notification {
-    private $notifications = [];
-    
-    public function create($userId, $message) {
-        $notification = [
-            'id' => count($this->notifications) + 1,
-            'userId' => $userId,
-            'message' => $message,
-            'read' => false,
-            'created_at' => date('Y-m-d H:i:s'),
+use Illuminate\Database\Eloquent\Model;
+
+class Notification extends Model
+{
+    protected $fillable = ['user_id', 'type', 'data', 'read_at'];
+
+    // Create a new notification
+    public static function createNotification($userId, $type, $data)
+    {
+        return self::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'data' => $data,
+            'read_at' => null,
+        ]);
+    }
+
+    // Mark notification as read
+    public function markAsRead()
+    {
+        $this->read_at = now();
+        $this->save();
+    }
+
+    // Retrieve notifications for a user
+    public static function getUserNotifications($userId)
+    {
+        return self::where('user_id', $userId)->orderBy('created_at', 'desc')->get();
+    }
+
+    // Store notification history with types
+    public static function types()
+    {
+        return [
+            'request_created',
+            'request_approved',
+            'request_issued',
+            'request_accepted',
         ];
-        $this->notifications[] = $notification;
-        return $notification;
-    }
-
-    public function markAsRead($id) {
-        foreach ($this->notifications as &$notification) {
-            if ($notification['id'] === $id) {
-                $notification['read'] = true;
-                return $notification;
-            }
-        }
-        return null;
-    }
-
-    public function getUserNotifications($userId) {
-        return array_filter($this->notifications, function($notification) use ($userId) {
-            return $notification['userId'] === $userId;
-        });
-    }
-
-    public function deleteNotification($id) {
-        foreach ($this->notifications as $key => $notification) {
-            if ($notification['id'] === $id) {
-                unset($this->notifications[$key]);
-                return true;
-            }
-        }
-        return false;
     }
 }
