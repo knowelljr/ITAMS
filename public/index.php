@@ -1,39 +1,46 @@
 <?php
-
+// Start the session management
 session_start();
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// Load environment variables from .env file
+if (file_exists(__DIR__ . '/.env')) {
+    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+    $dotenv->load();
+}
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
-$dotenv->load();
+// Composer autoloading
+require __DIR__ . '/vendor/autoload.php';
 
 // Route handling
-$request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$request_method = $_SERVER['REQUEST_METHOD'];
+$requestUri = $_SERVER['REQUEST_URI'];
+$requestMethod = $_SERVER['REQUEST_METHOD'];
 
-// Simple routing
-$routes = include __DIR__ . '/../routes/web.php';
-
-$route_found = false;
-
-foreach ($routes as $route => $action) {
-    $pattern = preg_replace('/\{(\w+)\}/', '(?P<$1>\d+)', $route);
-    $pattern = '#^' . $pattern . '$#';
-    
-    if (preg_match($pattern, $request_uri, $matches)) {
-        $route_found = true;
-        list($controller, $method) = explode('@', $action);
-        
-        $controller_class = 'App\\Controllers\\' . $controller;
-        $controller_instance = new $controller_class();
-        
-        $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
-        call_user_func_array([$controller_instance, $method], $params);
+// Example routing logic
+switch ($requestUri) {
+    case '/':
+        // Instantiate the home controller
+gotoHomeController();
         break;
-    }
+    case '/about':
+        // Instantiate the about controller
+        gotoAboutController();
+        break;
+    default:
+        // 404 Not Found response
+        handle404();
+        break;
 }
 
-if (!$route_found) {
-    http_response_code(404);
-    echo "404 - Page Not Found";
+function gotoHomeController() {
+    // Logic for home controller
 }
+
+function gotoAboutController() {
+    // Logic for about controller
+}
+
+function handle404() {
+    http_response_code(404);
+    echo '404 Not Found';
+}
+?>
