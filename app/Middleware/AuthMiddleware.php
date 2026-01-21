@@ -1,29 +1,25 @@
-<?php
+Middleware;
 
-namespace App\Middleware;
+use App\Helpers\JWT;
 
 class AuthMiddleware
 {
     public static function check()
     {
         if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
             header('Location: /login');
             exit;
         }
     }
 
-    public static function checkRole($allowedRoles = [])
+    public static function checkRole($roles = [])
     {
         self::check();
 
-        if (!isset($_SESSION['user_role'])) {
-            header('Location: /login');
-            exit;
-        }
-
-        if (!in_array($_SESSION['user_role'], $allowedRoles)) {
+        if (!in_array($_SESSION['user_role'], $roles)) {
             http_response_code(403);
-            die('Access Denied - Insufficient Permissions');
+            die('Access Denied: You do not have permission to access this resource.');
         }
     }
 
@@ -32,15 +28,6 @@ class AuthMiddleware
         if (isset($_SESSION['user_id'])) {
             header('Location: /dashboard');
             exit;
-        }
-    }
-
-    public static function isAdmin()
-    {
-        self::check();
-        if ($_SESSION['user_role'] !== 'ADMIN') {
-            http_response_code(403);
-            die('Admin access only');
         }
     }
 }
