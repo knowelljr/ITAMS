@@ -2,50 +2,48 @@
 
 namespace App\Controllers;
 
-use App\Models\DashboardModel;
+use App\Models\Request;
+use App\Models\Issuance;
+use App\Models\Statistics;
 
 class DashboardController {
-    private $dashboardModel;
+    protected $userRole;
 
-    public function __construct() {
-        $this->dashboardModel = new DashboardModel();
+    public function __construct($userRole) {
+        $this->userRole = $userRole;
     }
 
-    public function getDashboardData($role) {
-        switch ($role) {
+    public function show() {
+        switch ($this->userRole) {
             case 'REQUESTER':
-                return $this->getRequesterData();
+                return $this->showRequestStatus();
             case 'IT_STAFF':
-                return $this->getItStaffData();
+                return $this->showPendingRequestsAndIssuances();
             case 'IT_MANAGER':
-                return $this->getItManagerData();
+                return $this->showApprovalQueueAndStatistics();
             default:
-                throw new \Exception('Invalid role');
+                throw new \Exception('Invalid user role');
         }
     }
 
-    private function getRequesterData() {
-        // Fetch statistics and charts data for REQUESTER
+    protected function showRequestStatus() {
+        // Logic to fetch and return request status for requester
+        return Request::getStatus();
+    }
+
+    protected function showPendingRequestsAndIssuances() {
+        // Logic to fetch and return pending requests and issuances for IT staff
         return [
-            'requests' => $this->dashboardModel->getRequesterRequests(),
-            'chartData' => $this->dashboardModel->getRequesterChartData()
+            'pendingRequests' => Request::getPending(),
+            'pendingIssuances' => Issuance::getPending(),
         ];
     }
 
-    private function getItStaffData() {
-        // Fetch statistics and charts data for IT_STAFF
+    protected function showApprovalQueueAndStatistics() {
+        // Logic to fetch and return approval queue and statistics for IT manager
         return [
-            'resolvedRequests' => $this->dashboardModel->getResolvedRequests(),
-            'openRequests' => $this->dashboardModel->getOpenRequests(),
-            'chartData' => $this->dashboardModel->getItStaffChartData()
-        ];
-    }
-
-    private function getItManagerData() {
-        // Fetch statistics and charts data for IT_MANAGER
-        return [
-            'overallStatistics' => $this->dashboardModel->getOverallStatistics(),
-            'chartData' => $this->dashboardModel->getItManagerChartData()
+            'approvalQueue' => Request::getApprovalQueue(),
+            'statistics' => Statistics::getOverview(),
         ];
     }
 }
