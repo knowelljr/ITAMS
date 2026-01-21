@@ -7,32 +7,32 @@ use PDOException;
 
 class Connection
 {
-    private static $instance;
-    private $connection;
+    private static $instance = null;
+    private $pdo;
 
     private function __construct()
     {
-        $driver = 'sqlsrv';
-        $host = $_ENV['DB_HOST'] ?? 'localhost';
-        $port = $_ENV['DB_PORT'] ?? '1433';
-        $database = $_ENV['DB_DATABASE'] ?? 'ITAMS';
-        $username = $_ENV['DB_USERNAME'] ?? 'sa';
-        $password = $_ENV['DB_PASSWORD'] ?? ''; 
-
         try {
-            $dsn = "$driver:Server=$host,$port;Database=$database";
-            $this->connection = new PDO($dsn, $username, $password, [
+            $host = $_ENV['DB_HOST'] ?? 'localhost';
+            $port = $_ENV['DB_PORT'] ?? '1433';
+            $database = $_ENV['DB_DATABASE'] ?? 'itams';
+            $username = $_ENV['DB_USERNAME'] ?? 'sa';
+            $password = $_ENV['DB_PASSWORD'] ?? '';
+
+            $dsn = "sqlsrv:Server=$host,$port;Database=$database";
+            
+            $this->pdo = new PDO($dsn, $username, $password, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
         } catch (PDOException $e) {
-            die('Database Connection Error: ' . $e->getMessage());
+            die('Database connection failed: ' . $e->getMessage());
         }
     }
 
     public static function getInstance()
     {
-        if (!self::$instance) {
+        if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
@@ -40,28 +40,43 @@ class Connection
 
     public function getConnection()
     {
-        return $this->connection;
+        return $this->pdo;
     }
 
     public function query($sql, $params = [])
     {
-        $stmt = $this->connection->prepare($sql);
-        $stmt->execute($params);
-        return $stmt;
+        try {
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            return $stmt;
+        } catch (PDOException $e) {
+            throw new \Exception('Query error: ' . $e->getMessage());
+        }
     }
 
-    public function fetch($sql, $params = [])
+    public function insert($table, $data)
     {
-        return $this->query($sql, $params)->fetch();
+        $columns = implode(', ', array_keys($data));
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
+        
+        $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
+        $stmt = $this->query($sql, array_values($data));
+        
+        return $this->pdo->lastInsertId();
     }
 
-    public function fetchAll($sql, $params = [])
+    public function update($table, $data, $where, $whereParams = [])
     {
-        return $this->query($sql, $params)->fetchAll();
+        $set = implode(', ', array_map(fn($k) => "$k = ?", array_keys($data)));
+        $sql = "UPDATE $table SET $set WHERE $where";
+        
+        $params = array_merge(array_values($data), $whereParams);
+        return $this->query($sql, $params);
     }
 
-    public function lastInsertId()
+    public function delete($table, $where, $params = [])
     {
-        return $this->connection->lastInsertId();
+        $sql = "DELETE FROM $table WHERE $where";
+        return $this->query($sql, $params);
     }
 }
