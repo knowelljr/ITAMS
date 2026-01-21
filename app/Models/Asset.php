@@ -1,1 +1,55 @@
-<?php\n\nnamespace App\\Models;\n\nuse Illuminate\\Database\\Eloquent\\Model;\n\nclass Asset extends Model {\n    protected $fillable = ['name', 'quantity', 'status', 'decommissioned_at'];\n\n    public function createAsset($data) {\n        return self::create($data);\n    }\n\n    public function updateAsset($id, $data) {\n        $asset = self::find($id);\n        return $asset ? $asset->update($data) : null;\n    }\n\n    public function decommission($id) {\n        $asset = self::find($id);\n        if ($asset) {\n            $asset->status = 'decommissioned';\n            $asset->decommissioned_at = now();\n            return $asset->save();\n        }\n        return null;\n    }\n\n    public function getLowStockAssets($threshold) {\n        return self::where('quantity', '<=', $threshold)->get();\n    }\n\n    public function getHighMovingAssets($timeFrame) {\n        // Logic to get high moving assets based on a time frame\n    }\n\n    public function decommissionedAssets() {\n        return self::where('status', 'decommissioned')->get();\n    }\n\n    public function issueAsset($id) {\n        $asset = self::find($id);\n        if ($asset && $asset->status !== 'decommissioned') {\n            $asset->quantity--;\n            return $asset->save();\n        }\n        return null;\n    }\n\n    public function getStockStatus() {\n        return self::all();\n    }\n}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Asset extends Model
+{
+    protected $fillable = [
+        'asset_code',
+        'name',
+        'category',
+        'serial_number',
+        'location',
+        'cost',
+        'stock_quantities',
+    ];
+
+    public static function createAsset(array $data)
+    {
+        return self::create($data);
+    }
+
+    public static function readAsset($id)
+    {
+        return self::find($id);
+    }
+
+    public static function updateAsset($id, array $data)
+    {
+        $asset = self::find($id);
+        if ($asset) {
+            $asset->update($data);
+            return $asset;
+        }
+        return null;
+    }
+
+    public static function deleteAsset($id)
+    {
+        return self::destroy($id);
+    }
+
+    public function track() {
+        // Implementation for asset tracking
+    }
+
+    public function manageStock() {
+        // Implementation for stock control
+    }
+
+    public function manageStatus() {
+        // Implementation for status management
+    }
+}
