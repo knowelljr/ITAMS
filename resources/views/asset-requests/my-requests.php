@@ -87,29 +87,33 @@ HTML;
         
         $viewUrl = "/asset-requests/show/" . $request['id'];
         
-        $content .= <<<HTML
-            <tr>
-                <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-900">$refNum</td>
-                <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-900">$assetName</td>
-                <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-600">$category</td>
-                <td class="px-6 py-2 whitespace-nowrap text-center text-sm">$qty</td>
-                <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-600">$dateNeeded</td>
-                <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-600">$createdDate</td>
-                <td class="px-6 py-2 whitespace-nowrap text-center">
-                    <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">$status</span>
-                </td>
-                <td class="px-6 py-2 whitespace-nowrap text-center">
-                    <div class="flex flex-col gap-2">$deptBadge $itBadge</div>
-                </td>
-                <td class="px-6 py-2 whitespace-nowrap text-center text-sm">
-                    <div class="flex items-center gap-2 justify-center">
-                        <a href="$viewUrl" class="h-9 w-10 inline-flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700" title="View details" aria-label="View details">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    </div>
-                </td>
-            </tr>
-HTML;
+        $actions = '<a href="' . $viewUrl . '" class="h-9 w-10 inline-flex items-center justify-center bg-blue-600 text-white rounded hover:bg-blue-700" title="View details" aria-label="View details"><i class="fas fa-eye"></i></a>';
+        $canCancel = ($deptStatus !== 'APPROVED' && $itStatus !== 'APPROVED');
+        if ($canCancel) {
+            $cancelUrl = "/asset-requests/{$request['id']}/cancel";
+            $actions .= '<form method="POST" action="' . $cancelUrl . '" onsubmit="return confirm(\'Are you sure you want to cancel this request?\');" style="display:inline">';
+            $actions .= '<button type="submit" class="h-9 w-10 inline-flex items-center justify-center bg-red-600 text-white rounded hover:bg-red-700" title="Cancel Request" aria-label="Cancel Request">';
+            $actions .= '<i class="fas fa-times"></i>';
+            $actions .= '</button>';
+            $actions .= '</form>';
+        }
+        $content .= '<tr>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-sm text-gray-900">' . $refNum . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-sm text-gray-900">' . $assetName . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-sm text-gray-600">' . $category . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-center text-sm">' . $qty . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-sm text-gray-600">' . $dateNeeded . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-sm text-gray-600">' . $createdDate . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-center">'
+                . '<span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">' . $status . '</span>'
+            . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-center">'
+                . '<div class="flex flex-col gap-2">' . $deptBadge . ' ' . $itBadge . '</div>'
+            . '</td>'
+            . '<td class="px-6 py-2 whitespace-nowrap text-center text-sm">'
+                . '<div class="flex items-center gap-2 justify-center">' . $actions . '</div>'
+            . '</td>'
+        . '</tr>';
     }
 
     $content .= <<<HTML

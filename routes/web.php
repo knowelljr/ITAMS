@@ -1,6 +1,11 @@
 
 <?php
 
+$router->post('/asset-requests/:id/cancel', function($id) {
+    $controller = new \App\Controllers\AssetRequestController();
+    $controller->cancel($id);
+});
+
 $router->post('/stores/:id/deactivate', function($id) {
     $controller = new \App\Controllers\StoreController();
     $controller->deactivate($id);
@@ -654,6 +659,25 @@ $router->get('/stores/:id/inventory', function($id) {
 $router->get('/stores/:id/movements', function($id) {
     $controller = new \App\Controllers\StoreController();
     $controller->movements($id);
+});
+
+
+$router->get('/asset-requests/it-approvals', function() {
+    if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['IT_MANAGER', 'ADMIN'])) {
+        header('Location: /dashboard');
+        exit;
+    }
+    $reqCtrl = new \App\Controllers\AssetRequestController();
+    $reqCtrl->itManagerApprovals();
+});
+
+$router->post('/asset-requests/it-approvals/process', function() {
+    if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['IT_MANAGER', 'ADMIN'])) {
+        header('Location: /dashboard');
+        exit;
+    }
+    $reqCtrl = new \App\Controllers\AssetRequestController();
+    $reqCtrl->processItManagerApproval();
 });
 
 ?>

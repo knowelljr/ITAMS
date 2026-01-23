@@ -416,7 +416,10 @@
                 'icon' => 'fa-check-circle',
                 'roles' => ['ADMIN', 'DEPARTMENT_MANAGER', 'IT_MANAGER'],
                 'items' => [
-                    ['label' => 'Approve Request', 'url' => '/asset-requests/manager-approvals', 'icon' => 'fa-check-circle', 'roles' => ['ADMIN', 'DEPARTMENT_MANAGER', 'IT_MANAGER']],
+                    // Department Manager and Admin
+                    ['label' => 'Approve Request', 'url' => '/asset-requests/manager-approvals', 'icon' => 'fa-check-circle', 'roles' => ['ADMIN', 'DEPARTMENT_MANAGER']],
+                    // IT Manager and Admin
+                    ['label' => 'Approve Request', 'url' => '/asset-requests/it-approvals', 'icon' => 'fa-check-circle', 'roles' => ['ADMIN', 'IT_MANAGER']],
                 ]
             ],
             [

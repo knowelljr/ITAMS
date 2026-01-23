@@ -1,16 +1,133 @@
 <?php
-
 namespace App\Controllers;
-
-use App\Database\Connection;
 
 class AssetRequestController
 {
-    private $db;
+    protected $db;
 
     public function __construct()
     {
-        $this->db = Connection::getInstance()->getConnection();
+        $this->db = \App\Database\Connection::getInstance()->getConnection();
+    }
+    /**
+     * Show IT Manager approvals page (requests approved by department manager, pending IT approval)
+     */
+    public function itManagerApprovals()
+    {
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['IT_MANAGER', 'ADMIN'])) {
+            header('Location: /dashboard');
+            exit;
+        }
+        $user = [
+            'id' => $_SESSION['user_id'],
+            'role' => $_SESSION['user_role'],
+        ];
+        try {
+            $stmt = $this->db->prepare("SELECT ar.*, u.name as requester_name, u.employee_number, d.department_name, ar.asset_name, ar.asset_category, ar.quantity_requested, dm.name as dept_mgr_name FROM asset_requests ar JOIN users u ON ar.requester_id = u.id LEFT JOIN departments d ON u.department_id = d.id LEFT JOIN users dm ON ar.department_manager_approved_by = dm.id WHERE ar.department_manager_approval_status = 'APPROVED' AND ar.it_manager_approval_status = 'PENDING' AND ar.status NOT IN ('REJECTED', 'CANCELLED', 'FULLY_APPROVED') ORDER BY ar.created_at DESC");
+            $stmt->execute();
+            $requests = $stmt->fetchAll();
+            $activePage = 'approvals';
+            $approvalType = 'it_manager';
+            include __DIR__ . '/../../resources/views/asset-requests/approve-it.php';
+        } catch (\Exception $e) {
+            $_SESSION['error'] = 'Failed to load IT approvals: ' . $e->getMessage();
+            header('Location: /dashboard');
+            exit;
+        }
+    }
+
+    /**
+     * Process IT Manager approval action
+     */
+    public function processItManagerApproval()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /asset-requests/it-approvals');
+            exit;
+        }
+        if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['IT_MANAGER', 'ADMIN'])) {
+            header('Location: /dashboard');
+            exit;
+        }
+        $requestId = $_POST['request_id'] ?? null;
+        $action = $_POST['action'] ?? null;
+        $remarks = $_POST['remarks'] ?? '';
+        if (!$requestId || !in_array($action, ['approve', 'reject'])) {
+            $_SESSION['error'] = 'Invalid request';
+            header('Location: /asset-requests/it-approvals');
+            exit;
+        }
+        try {
+            $stmt = $this->db->prepare("SELECT * FROM asset_requests WHERE id = ?");
+            $stmt->execute([$requestId]);
+            $request = $stmt->fetch();
+            if (!$request || $request['it_manager_approval_status'] !== 'PENDING' || $request['department_manager_approval_status'] !== 'APPROVED') {
+                $_SESSION['error'] = 'Request not eligible for IT approval.';
+                header('Location: /asset-requests/it-approvals');
+                exit;
+            }
+            $approvalStatus = ($action === 'approve') ? 'APPROVED' : 'REJECTED';
+            $newStatus = ($action === 'approve') ? 'FULLY_APPROVED' : 'REJECTED';
+            $stmt = $this->db->prepare("UPDATE asset_requests SET it_manager_approval_status = ?, it_manager_approved_by = ?, it_manager_approved_at = GETDATE(), it_manager_remarks = ?, status = ?, updated_at = GETDATE() WHERE id = ?");
+            $stmt->execute([
+                $approvalStatus,
+                $_SESSION['user_id'],
+                $remarks,
+                $newStatus,
+                $requestId
+            ]);
+            $_SESSION['success'] = 'Request ' . ($action === 'approve' ? 'approved' : 'rejected') . ' successfully';
+            header('Location: /asset-requests/it-approvals');
+            exit;
+        } catch (\Exception $e) {
+            $_SESSION['error'] = 'Failed to process approval: ' . $e->getMessage();
+            header('Location: /asset-requests/it-approvals');
+            exit;
+        }
+    }
+
+
+    /**
+     * Cancel asset request (by requester, only if not yet approved)
+     */
+    public function cancel($id)
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: /asset-requests/my-requests');
+            exit;
+        }
+
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            $_SESSION['error'] = 'Unauthorized.';
+            header('Location: /login');
+            exit;
+        }
+
+        // Only allow cancel if not approved by any manager
+        $stmt = $this->db->prepare("SELECT * FROM asset_requests WHERE id = ? AND requester_id = ?");
+        $stmt->execute([$id, $userId]);
+        $request = $stmt->fetch();
+        if (!$request) {
+            $_SESSION['error'] = 'Request not found or not yours.';
+            header('Location: /asset-requests/my-requests');
+            exit;
+        }
+        if ($request['department_manager_approval_status'] === 'APPROVED' || $request['it_manager_approval_status'] === 'APPROVED') {
+            $_SESSION['error'] = 'Cannot cancel: already approved by a manager.';
+            header('Location: /asset-requests/my-requests');
+            exit;
+        }
+        if ($request['status'] === 'CANCELLED') {
+            $_SESSION['info'] = 'Request already cancelled.';
+            header('Location: /asset-requests/my-requests');
+            exit;
+        }
+        $stmt = $this->db->prepare("UPDATE asset_requests SET status = 'CANCELLED', updated_at = GETDATE() WHERE id = ?");
+        $stmt->execute([$id]);
+        $_SESSION['success'] = 'Request cancelled successfully.';
+        header('Location: /asset-requests/my-requests');
+        exit;
     }
 
     /**
@@ -39,144 +156,73 @@ class AssetRequestController
         $purpose = $_POST['purpose'] ?? '';
 
         // Server-side validation
-        $errors = [];
-        
-        // Validate asset name
-        if (empty($assetName)) {
-            $errors[] = 'Asset name is required';
-        } elseif (strlen($assetName) < 3) {
-            $errors[] = 'Asset name must be at least 3 characters';
-        }
-        
-        // Validate category
-        if (empty($assetCategory)) {
-            $errors[] = 'Category is required';
-        }
-        
-        // Validate quantity
-        if (!is_numeric($quantity) || $quantity <= 0) {
-            $errors[] = 'Quantity must be a number greater than 0';
-        }
-        
-        // Validate date needed (must be today or future)
-        if (!empty($dateNeeded)) {
-            $selectedDate = \DateTime::createFromFormat('Y-m-d', $dateNeeded);
-            if (!$selectedDate) {
-                $errors[] = 'Date needed must be in valid format (YYYY-MM-DD)';
-            } else {
-                $today = new \DateTime();
-                $today->setTime(0, 0, 0);
-                if ($selectedDate < $today) {
-                    $errors[] = 'Date needed must be today or in the future';
-                }
-            }
-        }
-        
-        // Validate purpose
-        if (empty($purpose)) {
-            $errors[] = 'Purpose is required';
-        } elseif (strlen($purpose) < 10) {
-            $errors[] = 'Purpose must be at least 10 characters';
-        }
-        
-        // If errors, return with error message
-        if (!empty($errors)) {
-            $_SESSION['error'] = implode(' | ', $errors);
-            header('Location: /asset-requests/create');
-            exit;
-        }
-
+        // Server-side validation
+        $user = [
+            'id' => $_SESSION['user_id'],
+            'role' => $_SESSION['user_role'],
+        ];
         try {
-            $this->db->beginTransaction();
+                    $this->db->beginTransaction();
 
-            // Generate request number
-            $requestNumber = 'REQ' . date('Ymd') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                    // Generate request number
+                    $requestNumber = 'REQ' . date('Ymd') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
 
-            // Check if request number already exists
-            $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM asset_requests WHERE request_number = ?");
-            $stmt->execute([$requestNumber]);
-            $exists = $stmt->fetch();
+                    // Check if request number already exists
+                    $stmt = $this->db->prepare("SELECT COUNT(*) as count FROM asset_requests WHERE request_number = ?");
+                    $stmt->execute([$requestNumber]);
+                    $exists = $stmt->fetch();
             
-            if ($exists['count'] > 0) {
-                // Generate a new one with milliseconds
-                $requestNumber = 'REQ' . date('Ymd') . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
-            }
+                    if ($exists['count'] > 0) {
+                        // Generate a new one with milliseconds
+                        $requestNumber = 'REQ' . date('Ymd') . str_pad(rand(1, 99999), 5, '0', STR_PAD_LEFT);
+                    }
 
-            // Check if requester is a Department Manager
-            $stmt = $this->db->prepare("SELECT role FROM users WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $userRole = $stmt->fetch();
-            $isDeptManager = ($userRole['role'] === 'DEPARTMENT_MANAGER');
+                    // Check if requester is a Department Manager
+                    $stmt = $this->db->prepare("SELECT role FROM users WHERE id = ?");
+                    $stmt->execute([$_SESSION['user_id']]);
+                    $userRole = $stmt->fetch();
+                    $isDeptManager = ($userRole['role'] === 'DEPARTMENT_MANAGER');
 
-            // If department manager, auto-approve and set status to DEPT_APPROVED to skip to IT Manager
-            $status = $isDeptManager ? 'DEPT_APPROVED' : 'PENDING';
-            $deptApprovalStatus = $isDeptManager ? 'APPROVED' : 'PENDING';
-            $deptApprovedBy = $isDeptManager ? $_SESSION['user_id'] : null;
-            $deptApprovedAt = $isDeptManager ? 'GETDATE()' : null;
+                    // If department manager, auto-approve and set status to DEPT_APPROVED to skip to IT Manager
+                    $status = $isDeptManager ? 'DEPT_APPROVED' : 'PENDING';
+                    $deptApprovalStatus = $isDeptManager ? 'APPROVED' : 'PENDING';
+                    $deptApprovedBy = $isDeptManager ? $_SESSION['user_id'] : null;
+                    $deptApprovedAt = $isDeptManager ? 'GETDATE()' : null;
 
-            $sql = "INSERT INTO asset_requests (
-                requester_id, asset_name, asset_category, quantity_requested, 
-                date_needed, reason, request_number, status, department_manager_approval_status, 
-                department_manager_approved_by, department_manager_approved_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " . ($deptApprovedAt ? $deptApprovedAt : "NULL") . ")";
+                    $sql = "INSERT INTO asset_requests (
+                        requester_id, asset_name, asset_category, quantity_requested, 
+                        date_needed, reason, request_number, status, department_manager_approval_status, 
+                        department_manager_approved_by, department_manager_approved_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " . ($deptApprovedAt ? $deptApprovedAt : "NULL") . ")";
             
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $_SESSION['user_id'],
-                $assetName,
-                $assetCategory,
-                $quantity,
-                $dateNeeded,
-                $purpose,
-                $requestNumber,
-                $status,
-                $deptApprovalStatus,
-                $deptApprovedBy
-            ]);
+                    $stmt = $this->db->prepare($sql);
+                    $stmt->execute([
+                        $_SESSION['user_id'],
+                        $assetName,
+                        $assetCategory,
+                        $quantity,
+                        $dateNeeded,
+                        $purpose,
+                        $requestNumber,
+                        $status,
+                        $deptApprovalStatus,
+                        $deptApprovedBy
+                    ]);
+                    $this->db->commit();
 
-            $this->db->commit();
-
-            if ($isDeptManager) {
-                $_SESSION['success'] = 'Asset request created and auto-approved. Request Number: ' . $requestNumber . ' (forwarded to IT Manager)';
-            } else {
-                $_SESSION['success'] = 'Asset request created successfully. Request Number: ' . $requestNumber;
+                    if ($isDeptManager) {
+                        $_SESSION['success'] = 'Asset request created and auto-approved. Request Number: ' . $requestNumber . ' (forwarded to IT Manager)';
+                    } else {
+                        $_SESSION['success'] = 'Asset request created successfully. Request Number: ' . $requestNumber;
+                    }
+                    header('Location: /asset-requests/my-requests');
+                    exit;
+                } catch (\Exception $e) {
+                    $this->db->rollBack();
+                    $_SESSION['error'] = 'Failed to create request: ' . $e->getMessage();
+                    header('Location: /asset-requests/create');
+                    exit;
             }
-            header('Location: /asset-requests/my-requests');
-            exit;
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            $_SESSION['error'] = 'Failed to create request: ' . $e->getMessage();
-            header('Location: /asset-requests/create');
-            exit;
-        }
-    }
-
-    /**
-     * Show requester's own requests
-     */
-    public function myRequests()
-    {
-        try {
-            $stmt = $this->db->prepare("
-                SELECT ar.*,
-                       dm.name as dept_mgr_name,
-                       im.name as it_mgr_name
-                FROM asset_requests ar
-                LEFT JOIN users dm ON ar.department_manager_approved_by = dm.id
-                LEFT JOIN users im ON ar.it_manager_approved_by = im.id
-                WHERE ar.requester_id = ?
-                ORDER BY ar.created_at DESC
-            ");
-            $stmt->execute([$_SESSION['user_id']]);
-            $requests = $stmt->fetchAll();
-
-            $activePage = 'asset-requests';
-            include __DIR__ . '/../../resources/views/asset-requests/my-requests.php';
-        } catch (\Exception $e) {
-            $_SESSION['error'] = 'Failed to load requests: ' . $e->getMessage();
-            header('Location: /dashboard');
-            exit;
-        }
     }
 
     /**
@@ -232,37 +278,6 @@ class AssetRequestController
     }
 
     /**
-     * Show requests pending department manager approval
-     */
-    public function departmentApprovals()
-    {
-        try {
-            // Get user's department
-            $stmt = $this->db->prepare("SELECT department_id FROM users WHERE id = ?");
-            $stmt->execute([$_SESSION['user_id']]);
-            $user = $stmt->fetch();
-
-            if (!$user || !$user['department_id']) {
-                $_SESSION['error'] = 'Department not found for your account';
-                header('Location: /dashboard');
-                exit;
-            }
-
-            // Get pending requests from same department
-            $stmt = $this->db->prepare("
-                SELECT ar.*,
-                       u.name as requester_name,
-                       u.employee_number,
-                       u.email,
-                       d.department_name
-                FROM asset_requests ar
-                JOIN users u ON ar.requester_id = u.id
-                LEFT JOIN departments d ON u.department_id = d.id
-                WHERE u.department_id = ?
-                  AND ar.department_manager_approval_status = 'PENDING'
-                  AND ar.status NOT IN ('REJECTED', 'CANCELLED')
-                ORDER BY ar.created_at DESC
-            ");
             $stmt->execute([$user['department_id']]);
             $requests = $stmt->fetchAll();
 
@@ -384,158 +399,14 @@ class AssetRequestController
     /**
     * Process department manager approval
      */
-    public function processDepartmentManagerApproval()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /asset-requests/manager-approvals');
-            exit;
-        }
-
-        $requestId = $_POST['request_id'] ?? null;
-        $action = $_POST['action'] ?? null;
-        $remarks = $_POST['remarks'] ?? '';
-
-        if (!$requestId || !in_array($action, ['approve', 'reject'])) {
-            $_SESSION['error'] = 'Invalid request';
-            header('Location: /asset-requests/manager-approvals');
-            exit;
-        }
-
-        try {
-            $this->db->beginTransaction();
-
-            $approvalStatus = ($action === 'approve') ? 'APPROVED' : 'REJECTED';
-            $newStatus = ($action === 'approve') ? 'DEPT_APPROVED' : 'REJECTED';
-
-            $stmt = $this->db->prepare("
-                UPDATE asset_requests 
-                SET department_manager_approval_status = ?,
-                    department_manager_approved_by = ?,
-                    department_manager_approved_at = GETDATE(),
-                    department_manager_remarks = ?,
-                    status = ?,
-                    updated_at = GETDATE()
-                WHERE id = ? AND department_manager_approval_status = 'PENDING'
-            ");
-            $stmt->execute([
-                $approvalStatus,
-                $_SESSION['user_id'],
-                $remarks,
-                $newStatus,
-                $requestId
-            ]);
-
-            if ($stmt->rowCount() === 0) {
-                throw new \Exception('Request not found or already processed');
-            }
-
-            $this->db->commit();
-
-            $_SESSION['success'] = 'Request ' . ($action === 'approve' ? 'approved' : 'rejected') . ' successfully';
-            header('Location: /asset-requests/manager-approvals');
-            exit;
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            $_SESSION['error'] = 'Failed to process approval: ' . $e->getMessage();
-            header('Location: /asset-requests/manager-approvals');
-            exit;
-        }
-    }
 
     /**
      * Show requests pending IT manager approval
      */
-    public function itManagerApprovals()
-    {
-        try {
-            $stmt = $this->db->query("
-                SELECT ar.*,
-                       u.name as requester_name,
-                       u.employee_number,
-                       u.email,
-                       d.department_name,
-                       dm.name as dept_mgr_name
-                FROM asset_requests ar
-                JOIN users u ON ar.requester_id = u.id
-                LEFT JOIN departments d ON u.department_id = d.id
-                LEFT JOIN users dm ON ar.department_manager_approved_by = dm.id
-                WHERE ar.department_manager_approval_status = 'APPROVED'
-                  AND ar.it_manager_approval_status = 'PENDING'
-                  AND ar.status = 'DEPT_APPROVED'
-                ORDER BY ar.created_at DESC
-            ");
-            $requests = $stmt->fetchAll();
-
-            $activePage = 'approvals';
-            $approvalType = 'it_manager';
-            include __DIR__ . '/../../resources/views/asset-requests/approve-it.php';
-        } catch (\Exception $e) {
-            $_SESSION['error'] = 'Failed to load approvals: ' . $e->getMessage();
-            header('Location: /dashboard');
-            exit;
-        }
-    }
 
     /**
      * Process IT manager approval
      */
-    public function processItManagerApproval()
-    {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /asset-requests/it-approvals');
-            exit;
-        }
-
-        $requestId = $_POST['request_id'] ?? null;
-        $action = $_POST['action'] ?? null;
-        $remarks = $_POST['remarks'] ?? '';
-
-        if (!$requestId || !in_array($action, ['approve', 'reject'])) {
-            $_SESSION['error'] = 'Invalid request';
-            header('Location: /asset-requests/it-approvals');
-            exit;
-        }
-
-        try {
-            $this->db->beginTransaction();
-
-            $approvalStatus = ($action === 'approve') ? 'APPROVED' : 'REJECTED';
-            $newStatus = ($action === 'approve') ? 'FULLY_APPROVED' : 'REJECTED';
-
-            $stmt = $this->db->prepare("
-                UPDATE asset_requests 
-                SET it_manager_approval_status = ?,
-                    it_manager_approved_by = ?,
-                    it_manager_approved_at = GETDATE(),
-                    it_manager_remarks = ?,
-                    status = ?,
-                    updated_at = GETDATE()
-                WHERE id = ? AND it_manager_approval_status = 'PENDING'
-            ");
-            $stmt->execute([
-                $approvalStatus,
-                $_SESSION['user_id'],
-                $remarks,
-                $newStatus,
-                $requestId
-            ]);
-
-            if ($stmt->rowCount() === 0) {
-                throw new \Exception('Request not found or already processed');
-            }
-
-            $this->db->commit();
-
-            $_SESSION['success'] = 'Request ' . ($action === 'approve' ? 'approved' : 'rejected') . ' successfully';
-            header('Location: /asset-requests/it-approvals');
-            exit;
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            $_SESSION['error'] = 'Failed to process approval: ' . $e->getMessage();
-            header('Location: /asset-requests/it-approvals');
-            exit;
-        }
-    }
 
     /**
      * IT Staff manage requests list
