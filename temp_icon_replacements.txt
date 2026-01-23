@@ -1,0 +1,34 @@
+Requester Section:
+✏️ → <i class="fas fa-plus-circle"></i>
+📋 → <i class="fas fa-list-alt"></i>
+📥 → <i class="fas fa-inbox"></i>
+
+IT Staff Section:
+📋 → <i class="fas fa-tasks"></i>
+📦 → <i class="fas fa-box"></i> (for Assets)
+📤 → <i class="fas fa-share-square"></i>
+📥 → <i class="fas fa-inbox"></i>
+📊 → <i class="fas fa-exchange-alt"></i> (for Movement)
+📦 → <i class="fas fa-warehouse"></i> (for Stock On-Hand)
+
+Department Manager Section:
+✏️ → <i class="fas fa-plus-circle"></i>
+✅ → <i class="fas fa-check-circle"></i>
+📋 → <i class="fas fa-list-alt"></i>
+
+IT Manager Section:
+✅ → <i class="fas fa-check-circle"></i> (3x)
+📊 → <i class="fas fa-chart-bar"></i> (Reports)
+📦 → <i class="fas fa-warehouse"></i> (Stock On-Hand)
+📈 → <i class="fas fa-chart-line"></i> (Statistics)
+
+Admin Section:
+👥 → <i class="fas fa-users"></i>
+🏢 → <i class="fas fa-building"></i>
+⚙️ → <i class="fas fa-cogs"></i>
+📦 → <i class="fas fa-box"></i> (Assets)
+📤 → <i class="fas fa-share-square"></i>
+📥 → <i class="fas fa-inbox"></i>
+✅ → <i class="fas fa-exclamation-triangle"></i> (Unplanned Issues)
+📊 → <i class="fas fa-exchange-alt"></i> (Movement)
+📦 → <i class="fas fa-warehouse"></i> (Stock On-Hand)

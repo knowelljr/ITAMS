@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.0/dist/tailwind.min.css" rel="stylesheet">
+    <title>ITAMS - Layout Preview</title>
+    <style>
+        .menu-item.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .menu-item.active a {
+            color: white;
+        }
+
+        /* Sidebar collapse styles */
+        aside {
+            transition: width 0.3s ease;
+        }
+        body.sidebar-collapsed aside {
+            width: 70px;
+            padding: 0.5rem 0.25rem;
+        }
+        body.sidebar-collapsed aside h2 {
+            display: none;
+        }
+        body.sidebar-collapsed .menu-text {
+            display: none;
+        }
+        body.sidebar-collapsed .menu-icon {
+            display: inline-block;
+        }
+        body.sidebar-collapsed .menu-item a {
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 1.25rem;
+        }
+        body.sidebar-collapsed ul {
+            margin-bottom: 0.5rem !important;
+            padding-left: 0 !important;
+        }
+        body.sidebar-collapsed li {
+            margin-bottom: 0.25rem !important;
+        }
+        body.sidebar-collapsed .border-t {
+            margin-top: 0.5rem !important;
+            padding-top: 0.5rem !important;
+        }
+        body.sidebar-collapsed h3 {
+            display: none;
+        }
+        
+        /* Tighter spacing globally */
+        .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 0.4rem !important;
+        }
+        aside ul li {
+            margin-bottom: 0.125rem;
+        }
+        aside h3 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .demo-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 50;
+            padding: 10px 20px;
+            background-color: #10b981;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .demo-button:hover {
+            background-color: #059669;
+        }
+    </style>
+</head>
+<body class="bg-gray-100" id="appBody">
+    <div class="flex flex-col h-screen">
+        <!-- Navbar -->
+        <nav class="bg-white shadow fixed top-0 left-0 right-0 z-40">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <button id="sidebarToggle" class="text-2xl text-gray-700 hover:text-blue-600 cursor-pointer focus:outline-none" title="Toggle sidebar">
+                        ☰
+                    </button>
+                    <div class="text-lg font-semibold text-blue-600">ITAMS</div>
+                </div>
+                <div>
+                    <span class="mr-4 text-sm">Logged in as: Demo User</span>
+                    <a href="#" class="text-blue-500 hover:text-blue-700 text-sm">Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <div class="flex flex-1 mt-16">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-gray-900 text-white p-4 overflow-y-auto transition-all duration-300">
+                <h2 class="font-bold mb-3 text-base">Menu</h2>
+                
+                <!-- Common Menu -->
+                <ul class="mb-2 space-y-1">
+                    <li class="menu-item active">
+                        <a href="#" class="block p-2 rounded bg-blue-500"><span class="menu-icon">🏠</span> <span class="menu-text">Dashboard</span></a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#" class="block p-2 rounded hover:bg-gray-800"><span class="menu-icon">👤</span> <span class="menu-text">Profile</span></a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="#" class="block p-2 rounded hover:bg-gray-800"><span class="menu-icon">⚙️</span> <span class="menu-text">Settings</span></a>
+                    </li>
+                </ul>
+
+                <!-- IT Staff Menu (Demo) -->
+                <div class="border-t border-gray-700 pt-2 mt-2">
+                    <h3 class="font-bold text-xs text-gray-400 mb-1">IT Staff</h3>
+                    <ul class="space-y-1">
+                        <li class="menu-item">
+                            <a href="#" class="block p-2 rounded hover:bg-gray-800 text-sm"><span class="menu-icon">📋</span> <span class="menu-text">Manage Requests</span></a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="#" class="block p-2 rounded hover:bg-gray-800 text-sm"><span class="menu-icon">📦</span> <span class="menu-text">Assets</span></a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="#" class="block p-2 rounded hover:bg-gray-800 text-sm"><span class="menu-icon">📤</span> <span class="menu-text">Issue Asset</span></a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="#" class="block p-2 rounded hover:bg-gray-800 text-sm"><span class="menu-icon">📥</span> <span class="menu-text">Receive Asset</span></a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="#" class="block p-2 rounded hover:bg-gray-800 text-sm"><span class="menu-icon">📊</span> <span class="menu-text">Movement Report</span></a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 mt-0 overflow-y-auto pb-20" id="mainContent">
+                <div id="contentContainer" class="bg-white p-3">
+                    <div class="mb-4">
+                        <h1 class="text-3xl font-bold mb-2">Dashboard</h1>
+                        <p class="text-gray-600">Welcome to ITAMS - IT Asset Management System</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-blue-50 p-4 rounded border-l-4 border-blue-500">
+                            <div class="text-gray-600 text-sm">Total Assets</div>
+                            <div class="text-2xl font-bold text-blue-600">1,234</div>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded border-l-4 border-green-500">
+                            <div class="text-gray-600 text-sm">Pending Requests</div>
+                            <div class="text-2xl font-bold text-green-600">45</div>
+                        </div>
+                        <div class="bg-yellow-50 p-4 rounded border-l-4 border-yellow-500">
+                            <div class="text-gray-600 text-sm">Recent Issues</div>
+                            <div class="text-2xl font-bold text-yellow-600">12</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-4">
+                        <h2 class="font-bold text-blue-900 mb-2">📌 Sidebar Collapse Feature</h2>
+                        <p class="text-blue-800 text-sm mb-2">Click the ☰ hamburger icon in the top-left to toggle sidebar collapse.</p>
+                        <ul class="list-disc list-inside text-blue-800 text-sm space-y-1">
+                            <li><strong>Expanded:</strong> 256px width with full menu text</li>
+                            <li><strong>Collapsed:</strong> 70px width with icons only</li>
+                            <li><strong>State Saved:</strong> Your preference is saved locally</li>
+                            <li><strong>Smooth Animation:</strong> 300ms transition effect</li>
+                            <li><strong>More Space:</strong> Content area expands when sidebar collapses</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <h2 class="text-xl font-bold">✅ Features Implemented</h2>
+                        <div class="bg-white border border-gray-200 rounded p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2">Layout Enhancements</h3>
+                            <ul class="list-disc list-inside text-gray-700 text-sm space-y-1">
+                                <li>Fixed header with hamburger toggle button</li>
+                                <li>Fixed footer with footer spacing (pb-20)</li>
+                                <li>Scrollable main content area</li>
+                                <li>Smooth sidebar collapse animation</li>
+                                <li>Icon-only menu when collapsed</li>
+                                <li>localStorage persistence for UI preferences</li>
+                                <li>Reduced margins and padding globally</li>
+                                <li>All role-based menu items have emoji icons</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-white text-center py-2 fixed bottom-0 left-0 right-0 z-40 border-t text-xs">
+            <p>&copy; 2026 ITAMS - IT Asset Management System. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <button id="testButton" class="demo-button">🔄 Try Collapsing Sidebar</button>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const appBody = document.getElementById('appBody');
+        const testButton = document.getElementById('testButton');
+
+        // Load saved preference
+        const savedCollapsed = localStorage.getItem('itamsSidebarCollapsed');
+        if (savedCollapsed === 'true') {
+            appBody.classList.add('sidebar-collapsed');
+        }
+
+        // Toggle button click handler
+        function toggleSidebar() {
+            appBody.classList.toggle('sidebar-collapsed');
+            const isCollapsed = appBody.classList.contains('sidebar-collapsed');
+            localStorage.setItem('itamsSidebarCollapsed', isCollapsed);
+            
+            // Update test button text
+            if (isCollapsed) {
+                testButton.textContent = '🔄 Expand Sidebar';
+            } else {
+                testButton.textContent = '🔄 Collapse Sidebar';
+            }
+        }
+
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        testButton.addEventListener('click', toggleSidebar);
+        
+        // Update button text on load
+        if (appBody.classList.contains('sidebar-collapsed')) {
+            testButton.textContent = '🔄 Expand Sidebar';
+        }
+    });
+    </script>
+</body>
+</html>

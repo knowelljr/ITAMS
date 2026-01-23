@@ -1,46 +1,31 @@
 <?php
-// Start the session management
+/**
+ * ITAMS Application Entry Point
+ */
+
+// Start the session
 session_start();
 
 // Load environment variables from .env file
-if (file_exists(__DIR__ . '/.env')) {
-    $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-    $dotenv->load();
+if (file_exists(__DIR__ . '/../.env')) {
+    if (class_exists('Dotenv\Dotenv')) {
+        $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+        $dotenv->load();
+    }
 }
 
 // Composer autoloading
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/../vendor/autoload.php';
 
-// Route handling
-$requestUri = $_SERVER['REQUEST_URI'];
-$requestMethod = $_SERVER['REQUEST_METHOD'];
+// Load the Router
+require __DIR__ . '/../app/Router.php';
 
-// Example routing logic
-switch ($requestUri) {
-    case '/':
-        // Instantiate the home controller
-gotoHomeController();
-        break;
-    case '/about':
-        // Instantiate the about controller
-        gotoAboutController();
-        break;
-    default:
-        // 404 Not Found response
-        handle404();
-        break;
-}
+// Create a new Router instance
+$router = new Router();
 
-function gotoHomeController() {
-    // Logic for home controller
-}
+// Load all routes from routes/web.php
+require __DIR__ . '/../routes/web.php';
 
-function gotoAboutController() {
-    // Logic for about controller
-}
-
-function handle404() {
-    http_response_code(404);
-    echo '404 Not Found';
-}
+// Dispatch the request
+$router->dispatch();
 ?>
